@@ -1,4 +1,5 @@
 from django.contrib.auth.decorators import login_required
+from django.http import HttpRequest, HttpResponse
 from django.shortcuts import render, redirect
 from django.urls import reverse_lazy
 from django.views import generic, View
@@ -53,7 +54,7 @@ class ManufacturerDeleteView(LoginRequiredMixin, generic.DeleteView):
     success_url = reverse_lazy("taxi:manufacturer-list")
 
 
-class DriverCreateView(generic.CreateView):
+class DriverCreateView(LoginRequiredMixin, generic.CreateView):
     model = Driver
     form_class = DriverLicenseCreateForm
     success_url = reverse_lazy("taxi:driver-list")
@@ -100,26 +101,19 @@ class CarDeleteView(LoginRequiredMixin, generic.DeleteView):
     success_url = reverse_lazy("taxi:car-list")
 
 
-class CarDriverToggleView(LoginRequiredMixin, View):
-    def post(self, request, pk):
+class CarAssignDriverView(LoginRequiredMixin, View):
+    def post(self, request: HttpRequest, pk: int) -> HttpResponse:
         car = Car.objects.get(id=pk)
         user = request.user
-
-        if "delete-driver" in request.path:
-            return self.remove_driver_from_car(car, user)
-        elif "assign-driver" in request.path:
-            return self.assign_driver_to_car(car, user)
-
-    @classmethod
-    def remove_driver_from_car(cls, car, user):
-        if user in car.drivers.all():
-            car.drivers.remove(user)
+        car.drivers.add(user)
         return redirect("taxi:car-list")
 
-    @classmethod
-    def assign_driver_to_car(cls, car, user):
-        if user not in car.drivers.all():
-            car.drivers.add(user)
+
+class CarDeleteDriverView(LoginRequiredMixin, View):
+    def post(self, request: HttpRequest, pk: int) -> HttpResponse:
+        car = Car.objects.get(id=pk)
+        user = request.user
+        car.drivers.remove(user)
         return redirect("taxi:car-list")
 
 
